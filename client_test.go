@@ -191,6 +191,23 @@ func TestMultipleMessageReception(t *testing.T) {
 
 }
 
+func TestClosedChannel(t *testing.T) {
+	client := createClient("tester")
+	client.Close()
+
+	if _, err := client.Subscribe("t"); err == nil {
+		t.Errorf("Expected %s error but got nil", ErrConnectionClosed)
+	}
+
+	if err := client.Push("t", "e"); err == nil {
+		t.Errorf("Expected %s error but got nil", ErrConnectionClosed)
+	}
+
+	if err := client.Grant(&AuthSettings{}); err == nil {
+		t.Errorf("Expected %s error but got nil", ErrConnectionClosed)
+	}
+}
+
 func TestGrantAccess(t *testing.T) {
 	gc := createClient("tester")
 	defer func() {
