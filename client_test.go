@@ -12,10 +12,10 @@ func createClient(id string) *PubNubClient {
 	return NewPubNubClient(cs)
 }
 
-func createMessage() map[string]string {
+func createMessage(body string) map[string]string {
 	return map[string]string{
 		"eventName": "messageAdded",
-		"body":      "testing all together",
+		"body":      body,
 	}
 }
 
@@ -39,7 +39,7 @@ func TestPublish(t *testing.T) {
 	pc := createClient("tester")
 	defer pc.Close()
 
-	message := createMessage()
+	message := createMessage("testing all together")
 	err := pc.Push("tester1", message)
 	if err != nil {
 		t.Errorf("Expected nil but got error while publishing: %s", err)
@@ -54,10 +54,6 @@ func TestMessageReception(t *testing.T) {
 		sender.Close()
 		receiver.Close()
 	}()
-
-	// these subscriptions are added for checking if messages are received correctly
-	// when we are subscribed to more than one channels
-	receiver.Subscribe("sueme")
 
 	channel, err := receiver.Subscribe("testme")
 	if err != nil {
@@ -103,15 +99,95 @@ func TestMessageReception(t *testing.T) {
 		}
 	}()
 
-	err = sender.Push("testme", createMessage())
+	err = sender.Push("testme", createMessage("testing all together"))
 	if err != nil {
 		t.Errorf("Expected nil but got error while publishing: %s", err)
 	}
-	// TODO when we concurrently push message and subscribe to a channel, pushed message
-	// is sometimes lost, due to reconnection
-	// receiver.Subscribe("padme")
 
 	wg.Wait()
+
+}
+
+func TestMultipleMessageReception(t *testing.T) {
+	sender := createClient("tester")
+	receiver := createClient("receiver")
+
+	defer func() {
+		sender.Close()
+		receiver.Close()
+	}()
+
+	// these subscriptions are added for checking if messages are received correctly
+	// when we are subscribed to more than one channels
+	channel1, err := receiver.Subscribe("channel1")
+	if err != nil {
+		t.Errorf("Expected nil but got got error while subscribing: %s", err)
+		t.FailNow()
+	}
+
+	channel2, err := receiver.Subscribe("channel2")
+	if err != nil {
+		t.Errorf("Expected nil but got error while subscribing: %s", err)
+		t.FailNow()
+	}
+
+	err = sender.Push("channel1", createMessage("message1"))
+	if err != nil {
+		t.Errorf("Expected nil but got error while publishing: %s", err)
+		t.FailNow()
+	}
+
+	err = sender.Push("channel2", createMessage("message2"))
+	if err != nil {
+		t.Errorf("Expected nil but got error while publishing: %s", err)
+		t.FailNow()
+	}
+
+	// TODO when we concurrently push message and subscribe to a channel, pushed message
+	// is sometimes lost, due to reconnection process of current pubnub go-client
+	// receiver.Subscribe("padme")
+
+	testConsume := func(channel *Channel, messageBody string) {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		defer wg.Done()
+
+		select {
+		case msg := <-channel.Consume():
+			body, ok := msg.Body.(map[string]interface{})
+			if !ok {
+				t.Errorf("Wrong message body type")
+				t.FailNow()
+			}
+
+			val, ok := body["eventName"]
+			if !ok {
+				t.Error("'eventName' field is expected in message but not found")
+				t.Fail()
+			} else {
+				if val != "messageAdded" {
+					t.Errorf("Expected messageAdded event in message but got %s", val)
+				}
+			}
+
+			val, ok = body["body"]
+			if !ok {
+				t.Error("'body' field is expected in message but not found")
+				t.Fail()
+			} else {
+				if val != messageBody {
+					t.Errorf("Expected '%s' as message body but got %s", messageBody, val)
+				}
+			}
+
+		case <-time.After(5 * time.Second):
+			t.Errorf("Expected message but it is timedout")
+			t.FailNow()
+		}
+	}
+
+	testConsume(channel1, "message1")
+	testConsume(channel2, "message2")
 
 }
 
