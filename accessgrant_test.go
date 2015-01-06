@@ -1,14 +1,30 @@
 package pubnub
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
+
+func newClientSettings(id string) *ClientSettings {
+	subscribeKey := os.Getenv("PUBNUB_SUBSCRIBE_KEY")
+	publishKey := os.Getenv("PUBNUB_PUBLISH_KEY")
+	secretKey := os.Getenv("PUBNUB_SECRET_KEY")
+
+	cs := new(ClientSettings)
+	if id == "" {
+		uuid := os.Getenv("PUBNUB_UUID")
+		cs.ID = uuid
+	}
+
+	cs.SubscribeKey = subscribeKey
+	cs.PublishKey = publishKey
+	cs.SecretKey = secretKey
+
+	return cs
+}
 
 func TestGrantAccessWithGranter(t *testing.T) {
-	cs := new(ClientSettings)
-	cs.ID = "-1"
-	cs.SubscribeKey = "subscribekey"
-	cs.PublishKey = "publishkey"
-	cs.SecretKey = "secretkey"
-
+	cs := newClientSettings("-1")
 	ag := NewAccessGrant(NewAccessGrantOptions(), cs)
 
 	a := new(AuthSettings)

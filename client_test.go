@@ -7,11 +7,7 @@ import (
 )
 
 func createClient(id string) *PubNubClient {
-	cs := new(ClientSettings)
-	cs.ID = id
-	cs.SubscribeKey = "subscribekey"
-	cs.PublishKey = "publishkey"
-	cs.SecretKey = "secretkey"
+	cs := newClientSettings(id)
 
 	return NewPubNubClient(cs)
 }
