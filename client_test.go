@@ -70,7 +70,7 @@ func TestMessageReception(t *testing.T) {
 		wg.Add(1)
 		defer wg.Done()
 		select {
-		case msg := <-channel.MessageCh:
+		case msg := <-channel.Consume():
 			body, ok := msg.Body.(map[string]interface{})
 			if !ok {
 				t.Errorf("Wrong message body type")
