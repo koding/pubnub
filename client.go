@@ -114,8 +114,10 @@ func (p *PubNubClient) fetchOrCreateChannel(channelName string) (*Channel, error
 	}
 
 	p.mu.Lock()
-	defer p.mu.Unlock()
+
 	p.channels[channelName] = channel
+
+	p.mu.Unlock()
 
 	return channel, nil
 }

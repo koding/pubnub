@@ -110,9 +110,6 @@ func (pr *PubNubRequest) parseResponse(response []byte) {
 
 func (pr *PubNubRequest) parseGrantResponse(response map[string]interface{}) {
 	isError, ok := response["error"].(bool)
-	if !ok {
-		isError = false
-	}
 
 	message, ok := response["message"].(string)
 	if !ok {
