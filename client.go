@@ -8,15 +8,17 @@ import (
 )
 
 var (
-	ErrChannelNotSet   = errors.New("channel name is not set")
-	ErrTimeout         = errors.New("timeout reached")
-	ErrConnectionAbort = errors.New("connection aborted")
+	ErrChannelNotSet    = errors.New("channel name is not set")
+	ErrTimeout          = errors.New("timeout reached")
+	ErrConnectionAbort  = errors.New("connection aborted")
+	ErrConnectionClosed = errors.New("connection closed")
 )
 
 type PubNubClient struct {
 	pub      *messaging.Pubnub
 	channels map[string]*Channel
 	mu       sync.RWMutex
+	closed   bool
 }
 
 func NewPubNubClient(cs *ClientSettings) *PubNubClient {
@@ -41,6 +43,10 @@ type ClientSettings struct {
 // Push sends a message to the channel with channelName. If Access Manager is enabled
 // access must be granted first.
 func (p *PubNubClient) Push(channelName string, body interface{}) error {
+	if p.closed {
+		return ErrConnectionClosed
+	}
+
 	pr := NewPubNubRequest(channelName, nil, nil)
 
 	go pr.handleResponse()
@@ -52,6 +58,10 @@ func (p *PubNubClient) Push(channelName string, body interface{}) error {
 
 // Grant read/write access to the given token for TTL period. If token
 func (p *PubNubClient) Grant(a *AuthSettings) error {
+	if p.closed {
+		return ErrConnectionClosed
+	}
+
 	if a.ChannelName == "" {
 		return ErrChannelNotSet
 	}
@@ -71,6 +81,10 @@ func (p *PubNubClient) Grant(a *AuthSettings) error {
 // Returns a message listener channel
 // TODO add support for multiple channel subscription
 func (p *PubNubClient) Subscribe(channelName string) (*Channel, error) {
+	if p.closed {
+		return nil, ErrConnectionClosed
+	}
+
 	if channelName == "" {
 		return nil, ErrChannelNotSet
 	}
@@ -109,15 +123,20 @@ func (p *PubNubClient) fetchOrCreateChannel(channelName string) (*Channel, error
 //////////////////// PubnubAuthSettings /////////////////////
 
 type AuthSettings struct {
+
 	// PubNub channel name
 	ChannelName string
+
 	// Grant access for the token. When token is an
 	// empty string it provides public access for the channel.
 	Token string
+
 	// Grant read access
 	CanRead bool
+
 	// Grant write Access
 	CanWrite bool
+
 	// Time to live value in minutes.
 	// Access is revoked after TTL period
 	// Min-max values can be consecutively: 1 and 525600
