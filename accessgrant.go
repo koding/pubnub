@@ -1,10 +1,13 @@
 package pubnub
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/pubnub/go/messaging"
 )
+
+var ErrInvalidType = errors.New("invalid type")
 
 type AccessGrant struct {
 	pool sync.Pool
@@ -39,7 +42,11 @@ func NewAccessGrant(ao *AccessGrantOptions, cs *ClientSettings) *AccessGrant {
 }
 
 func (ag *AccessGrant) Grant(as *AuthSettings) error {
-	client := ag.pool.Get().(*PubNubClient)
+	client, ok := ag.pool.Get().(*PubNubClient)
+	if !ok {
+		panic(ErrInvalidType)
+	}
+
 	defer ag.pool.Put(client)
 
 	client.pub.SetAuthenticationKey(as.Token)
