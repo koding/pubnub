@@ -102,6 +102,10 @@ func (p *PubNubClient) Close() {
 	p.closed = true
 }
 
+func (p *PubNubClient) SetAuthToken(token string) {
+	p.pub.SetAuthenticationKey(token)
+}
+
 func (p *PubNubClient) fetchOrCreateChannel(channelName string) (*Channel, error) {
 	p.mu.RLock()
 	channel, ok := p.channels[channelName]
